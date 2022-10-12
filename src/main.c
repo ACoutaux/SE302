@@ -2,24 +2,20 @@
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/led.h>
 
-// Designate the "led0" alias from the device tree
-#define LED_NODE DT_ALIAS(led0)
-
-// Get the GPIO (port, pin and flags) corresponding to the
-// led0 node alias at compile time.
-static const struct gpio_dt_spec led_gpio = GPIO_DT_SPEC_GET(LED_NODE, gpios);
+//Get a pointer on the led driver device using its path in the device tree (/leds)
+const struct device *const led_dev = DEVICE_DT_GET(DT_PATH(leds)); 
 
 int main() {
-  if (!device_is_ready(led_gpio.port)) {
-    return -ENODEV;
-  }
-  // Note that we use INACTIVE, not LOW. On some boards,
-  // the behaviour of the output may be reversed, but this
-  // is not our concern. This info belongs to the device tree.
-  gpio_pin_configure_dt(&led_gpio, GPIO_OUTPUT_INACTIVE);
+  
+  //Make the led 0 and 1 blink
   for (;;) {
-    gpio_pin_toggle_dt(&led_gpio);
+    led_on(led_dev,1);
+    led_off(led_dev,0);
+    k_sleep(K_SECONDS(1));
+    led_on(led_dev,0);
+    led_off(led_dev,1);
     k_sleep(K_SECONDS(1));
   }
   return 0;
