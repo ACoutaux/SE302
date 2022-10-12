@@ -12,10 +12,14 @@ int main() {
   //Make the led 0 and 1 blink
   for (;;) {
     led_on(led_dev,1);
-    led_off(led_dev,0);
-    k_sleep(K_SECONDS(1));
     led_on(led_dev,0);
+    led_on(led_dev,2);
+    
+    k_sleep(K_SECONDS(1));
+    
     led_off(led_dev,1);
+    led_off(led_dev,0);
+    led_off(led_dev,2);
     k_sleep(K_SECONDS(1));
   }
   return 0;
