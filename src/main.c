@@ -13,50 +13,16 @@
 #include <inttypes.h>
 #include <zephyr/drivers/led.h>
 #include <zephyr/drivers/sensor.h>
-
-//Define the stacksize for the blink thread
-#define STACKSIZE 1024
-
-//Define the priority for the blink thread
-#define PRIORITY 9
-
-//Declare data structure for message queue
-struct data_item_type {
-	double dis_value;
-};  
-
-//Init message queue
-K_MSGQ_DEFINE(my_msgq, sizeof(struct data_item_type), 10, 64); //10 items of 64 bits (double)
+#include <zephyr/drivers/i2c.h>
 
 //Define device object for distance captor vl53l0X
 const struct device *const sensor_dis = DEVICE_DT_GET_ANY(st_vl53l0x);
 
-//Define led variable for led0
+//Define led structure for led0
 static struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 
-void dis_sensor(void) {
-
-	//Check if distance sensor divice is ready 
-	if (!device_is_ready(sensor_dis))
-	{
-		printk("Error: distance sensor device is not ready");
-			   
-		return;
-	}
-
-	struct sensor_value distance;
-
-	while(1) {
-		sensor_sample_fetch(sensor_dis); //Reads data for sensor_dis channel
-		sensor_channel_get(sensor_dis,SENSOR_CHAN_DISTANCE,&distance); //Stock values in distance structure
-		double val = sensor_value_to_double(&distance); //Convert sensor value type to double
-		k_msleep(50); //Waits 500s beetween each reading of sensor values
-		while (k_msgq_put(&my_msgq, &val, K_NO_WAIT) != 0) {
-            //If full clear and retry
-            k_msgq_purge(&my_msgq);
-        }
-	}
-}
+//Define bus_i2c structure for bus i2c
+static struct i2c_dt_spec bus_i2c = I2C_DT_SPEC_GET(DT_ALIAS(accel0));
 
 void main(void)
 {
@@ -68,17 +34,17 @@ void main(void)
 		return; 
 	}
 
-	double data; //Contains data received by message queue
+	//Check if accelerometer is ready
+	if (!device_is_ready(bus_i2c.bus))
+	{
+		printk("Error: i2c bus device is not ready");
+		return; 
+	}
 
-	while(1) {
-		//The led is set to sleep every data*100 ms (taking in account that data are in centimeters)
-		k_msgq_get(&my_msgq, &data, K_FOREVER);
-		gpio_pin_set_dt(&led,1);
-		k_msleep(data*100);
-		gpio_pin_set_dt(&led,0);
-		k_msleep(data*100);
+	while(1) {	
+		uint8_t who_am_i; //variable for WHO_AM_I register
+		i2c_reg_read_byte_dt(&bus_i2c,0x0f, &who_am_i);	//reads content of regiser at adress 0f
+		printk("who_am_i: %d\n",who_am_i); //print register content in decimal format
+		k_msleep(1000);
 	}
 }
-
-//Define and start at compilation distance sensor thread
-K_THREAD_DEFINE(dis_sensor_id, STACKSIZE, dis_sensor, NULL, NULL, NULL,PRIORITY, 0, 0);
