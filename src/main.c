@@ -33,7 +33,7 @@ static const struct gpio_dt_spec accelerometer_irq = GPIO_DT_SPEC_GET(DT_ALIAS(a
 
 //Variables for accelerometer measurements
 uint8_t acc_x1, acc_x2, acc_y1, acc_y2, acc_z1, acc_z2; 
-uint16_t acc_x, acc_y, acc_z, norm_acc;
+int16_t acc_x, acc_y, acc_z, norm_acc;
 
 void read_display_accelerometer(struct k_work *item)
 {
@@ -47,12 +47,12 @@ void read_display_accelerometer(struct k_work *item)
 	i2c_reg_read_byte_dt(&accelerometer, 0x2c, &acc_z1);
 	i2c_reg_read_byte_dt(&accelerometer, 0x2d, &acc_z2);
 	// Compute linear accelerations and norm
-	acc_x = (((acc_x2 << 8) + acc_x1) * 0.00059857177) - (2 * 9.807); // converted to m/s^2
-	acc_y = (((acc_y2 << 8) + acc_y1) * 0.00059857177) - (2 * 9.807);
-	acc_z = (((acc_z2 << 8) + acc_z1) * 0.00059857177) - (2 * 9.807);
-	norm_acc = sqrt((acc_x1 ^ 2) + (acc_y ^ 2) + (acc_z ^ 2));
-	printk("Acceleration X: %d Acceleration Y: %d Acceleration Z: %d\n", acc_x, acc_y, acc_z); // print register content in decimal format
-	printk("Norme: %d\n", norm_acc);
+	acc_x = ((acc_x2 << 8) + acc_x1);
+	acc_y = ((acc_y2 << 8) + acc_y1);
+	acc_z = ((acc_z2 << 8) + acc_z1);
+	norm_acc = sqrt((acc_x ^ 2) + (acc_y ^ 2) + (acc_z ^ 2));
+	printk("Acceleration X: %f Acceleration Y: %f Acceleration Z: %f\n", acc_x*0.00059857177, acc_y*0.00059857177, acc_z*0.00059857177); // converted into m/s^2
+	printk("Norme: %f\n", norm_acc*0.00059857177);	// m/s^2
 }
 
 void data_on_accelerometer(const struct device *dev, struct gpio_callback *cb,
@@ -97,8 +97,9 @@ void main(void)
 	gpio_init_callback(&accelerometer_data, data_on_accelerometer, BIT(accelerometer_irq.pin));
 	gpio_add_callback(accelerometer_irq.port, &accelerometer_data);
 
-	i2c_reg_write_byte_dt(&accelerometer, 0x12, 0b00000101); // reset accelerometer and keep automatic incrementation of adresses enabled
-	i2c_reg_write_byte_dt(&accelerometer, 0x0d, 0b00000001); // set INT1_DRDY_XL (data on acceleromter) to 1 (enable) on the interruption register INT1_CTRL
+	i2c_reg_write_byte_dt(&accelerometer, 0x12, 0b00000101); // reset accelerometer and keep automatic incrementation of adresses enabled (CTRL3_C)
 	i2c_reg_write_byte_dt(&accelerometer, 0x15, 0b00010000); // set XL_HM_MODE to 1 to disable high performance mode
 	i2c_reg_write_byte_dt(&accelerometer, 0x10, 0b10110000); // set ODR_XLR[3:0] to 1 0 1 1 for a frequency at 1.6 Hz and FS_XL[1:0] to 0 0 to have measurements beetween -2g(0) and 2g(65535)
+	i2c_reg_write_byte_dt(&accelerometer, 0x0d, 0b00000001); // set INT1_DRDY_XL (data on acceleromter) to 1 (enable) on the interruption register INT1_CTRL
+
 }
