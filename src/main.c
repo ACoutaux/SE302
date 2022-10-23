@@ -14,7 +14,11 @@
 #include <zephyr/drivers/led.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/i2c.h>
+#include <stdio.h>
+#include <stdlib.h> 
 #include <math.h>
+
+#define PI 3.14159265
 
 //Structure for k_work object to read and display accelerometer value
 struct k_work read_display_accelerometer_work;
@@ -34,6 +38,7 @@ static const struct gpio_dt_spec accelerometer_irq = GPIO_DT_SPEC_GET(DT_ALIAS(a
 //Variables for accelerometer measurements
 uint8_t acc_x1, acc_x2, acc_y1, acc_y2, acc_z1, acc_z2; 
 int16_t acc_x, acc_y, acc_z, norm_acc;
+double teta_x,teta_y,teta_z;
 
 void read_display_accelerometer(struct k_work *item)
 {
@@ -48,11 +53,14 @@ void read_display_accelerometer(struct k_work *item)
 	i2c_reg_read_byte_dt(&accelerometer, 0x2d, &acc_z2);
 	// Compute linear accelerations and norm
 	acc_x = ((acc_x2 << 8) + acc_x1);
-	acc_y = ((acc_y2 << 8) + acc_y1);
+	acc_y = ((acc_y2 << 8) + acc_y1); 
 	acc_z = ((acc_z2 << 8) + acc_z1);
-	norm_acc = sqrt((acc_x ^ 2) + (acc_y ^ 2) + (acc_z ^ 2));
-	printk("Acceleration X: %f Acceleration Y: %f Acceleration Z: %f\n", acc_x*0.00059857177, acc_y*0.00059857177, acc_z*0.00059857177); // converted into m/s^2
-	printk("Norme: %f\n", norm_acc*0.00059857177);	// m/s^2
+
+	//Compute angular positions
+	teta_x = atan(acc_x*0.00059857177/sqrt((pow(acc_y*0.00059857177,2)+pow(acc_z*0.00059857177,2)))) *180/PI; //converted in degrees
+	teta_z = atan(acc_z*0.00059857177/sqrt((pow(acc_y*0.00059857177,2)+pow(acc_x*0.00059857177,2)))) *180/PI; 
+	teta_y = atan(acc_y*0.00059857177/sqrt((pow(acc_x*0.00059857177,2)+pow(acc_z*0.00059857177,2)))) *180/PI;
+	printk("TiltX: %f TiltY: %f TiltZ: %f\n", teta_x,teta_y,teta_z); 
 }
 
 void data_on_accelerometer(const struct device *dev, struct gpio_callback *cb,
@@ -101,5 +109,4 @@ void main(void)
 	i2c_reg_write_byte_dt(&accelerometer, 0x15, 0b00010000); // set XL_HM_MODE to 1 to disable high performance mode
 	i2c_reg_write_byte_dt(&accelerometer, 0x10, 0b10110000); // set ODR_XLR[3:0] to 1 0 1 1 for a frequency at 1.6 Hz and FS_XL[1:0] to 0 0 to have measurements beetween -2g(0) and 2g(65535)
 	i2c_reg_write_byte_dt(&accelerometer, 0x0d, 0b00000001); // set INT1_DRDY_XL (data on acceleromter) to 1 (enable) on the interruption register INT1_CTRL
-
 }
