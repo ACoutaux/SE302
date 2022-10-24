@@ -1,0 +1,3 @@
+export PATH=$PATH:/comelec/softs/opt/Segger/JLink_current/
+export ZEPHYR_BASE=/comelec/softs/opt/zephyr-rtos/sources/zephyr
+source /comelec/softs/opt/zephyr-rtos/sources/west-venv/bin/activate
