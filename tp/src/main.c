@@ -58,9 +58,8 @@ void read_display_accelerometer(struct k_work *item)
 
 	//Compute angular positions
 	teta_x = atan(acc_x*0.00059857177/sqrt((pow(acc_y*0.00059857177,2)+pow(acc_z*0.00059857177,2)))) *180/PI; //converted in degrees
-	teta_z = atan(acc_z*0.00059857177/sqrt((pow(acc_y*0.00059857177,2)+pow(acc_x*0.00059857177,2)))) *180/PI; 
 	teta_y = atan(acc_y*0.00059857177/sqrt((pow(acc_x*0.00059857177,2)+pow(acc_z*0.00059857177,2)))) *180/PI;
-	printk("TiltX: %f TiltY: %f TiltZ: %f\n", teta_x,teta_y,teta_z); 
+	printk("TiltX: %f TiltY: %f\n", teta_x,teta_y); 
 }
 
 void data_on_accelerometer(const struct device *dev, struct gpio_callback *cb,
