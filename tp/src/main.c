@@ -45,8 +45,8 @@ void read_display_accelerometer(struct k_work *item)
 	// Read STATUS_REG register
 	i2c_reg_read_byte_dt(&accelerometer, 0x1e, &status);
 
-	//if (status == 7)
-	//{ // data available for both gyroscope and accelerometer
+	if (status >= 0x3)
+	{ // data available for both gyroscope and accelerometer
 
 		// Read gyroscope data for X axis
 		i2c_reg_read_byte_dt(&accelerometer, 0x22, &gyro_x1);
@@ -77,11 +77,11 @@ void read_display_accelerometer(struct k_work *item)
 		// Compute angular positions
 		teta_x = atan(acc_x * 0.00059857177 / sqrt((pow(acc_y * 0.00059857177, 2) + pow(acc_z * 0.00059857177, 2)))) * 180 / PI; // converted in degrees
 		teta_y = atan(acc_y * 0.00059857177 / sqrt((pow(acc_x * 0.00059857177, 2) + pow(acc_z * 0.00059857177, 2)))) * 180 / PI;
-		teta_speed_x = ((gyro_x * 250) / (2^15));
-		teta_speed_y = (gyro_y * 250) / (2^15);
-		teta_speed_z = (gyro_z * 250) / (2^15);
+		teta_speed_x = gyro_x * 0.00762939453; //converted in dps
+		teta_speed_y = gyro_y * 0.00762939453;
+		teta_speed_z = gyro_z * 0.00762939453;
 		printk("TiltX: %f TiltY: %f Gx: %f Gy: %f Gz: %f\n", teta_x, teta_y,teta_speed_x,teta_speed_y,teta_speed_z);
-	//}
+	} else {}
 }
 
 void data_on_accelerometer(const struct device *dev, struct gpio_callback *cb,
