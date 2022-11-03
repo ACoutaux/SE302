@@ -39,6 +39,7 @@ static const struct gpio_dt_spec accelerometer_irq = GPIO_DT_SPEC_GET(DT_ALIAS(a
 uint8_t acc_x1, acc_x2, acc_y1, acc_y2, acc_z1, acc_z2, status, gyro_x1, gyro_x2, gyro_y1, gyro_y2, gyro_z1,gyro_z2;
 int16_t acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z;
 double teta_x, teta_y, teta_speed_x,teta_speed_y,teta_speed_z;
+static double tilt_angle_x, tilt_angle_y = 0.0; //static variable for gyroscope measurement to save previous value beetween each measurements
 
 void read_display_accelerometer(struct k_work *item)
 {
@@ -80,7 +81,9 @@ void read_display_accelerometer(struct k_work *item)
 		teta_speed_x = gyro_x * 0.00762939453; //converted in dps
 		teta_speed_y = gyro_y * 0.00762939453;
 		teta_speed_z = gyro_z * 0.00762939453;
-		printk("TiltX: %f TiltY: %f Gx: %f Gy: %f Gz: %f\n", teta_x, teta_y,teta_speed_x,teta_speed_y,teta_speed_z);
+		tilt_angle_x = tilt_angle_x + (teta_speed_x*0.00961538461); //measurements rate set to 104 Hz for gyroscope
+		tilt_angle_y = tilt_angle_y + (teta_speed_y*0.00961538461);
+		printk("TiltX: %f TiltY: %f TiltGx: %f TiltGy: %f\n", teta_x, teta_y,tilt_angle_y*100.0,tilt_angle_x*100.0);
 	} else {}
 }
 
