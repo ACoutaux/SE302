@@ -43,17 +43,23 @@ static struct i2c_dt_spec accelerometer = I2C_DT_SPEC_GET(DT_ALIAS(accel0));
 // Define mC irq sructure for accelerometer
 static const struct gpio_dt_spec accelerometer_irq = GPIO_DT_SPEC_GET(DT_ALIAS(accel0), irq_gpios);
 
+// Define led variable for led0
+static struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+
 // Variables for accelerometer measurements
 static uint8_t acc_x1, acc_x2, acc_y1, acc_y2, acc_z1, acc_z2, status, gyro_x1, gyro_x2, gyro_y1, gyro_y2, gyro_z1, gyro_z2;
 int16_t acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z;
-double teta_x, teta_y, teta_speed_x, teta_speed_y, teta_speed_z, Tilt_X, Tilt_Y;
-static double tilt_angle_x, tilt_angle_y = 0.0; // static variable for gyroscope measurement to save previous value beetween each measurements
+double teta_x, teta_y, teta_speed_x, teta_speed_y, teta_speed_z, blink_rate_ref;
+static double tilt_angle_x, tilt_angle_y = 0.0; // static variables for gyroscope measurement to save previous value beetween each measurements
+static double filter_tilt_X, filter_tilt_Y;		// static variables for complementary filter tilts
 
-//Entry point function of filter_id thread
-void complementary_filter(void) {
-	while (1) {
-		k_msleep(200); //waits 200 ms between each display
-		k_mutex_lock(&gyro_acc_mutex, K_FOREVER); //lock mutex to compute and display data
+// Entry point function of filter_id thread
+void complementary_filter(void)
+{
+	while (1)
+	{
+		k_msleep(200);							  // waits 200 ms between each display
+		k_mutex_lock(&gyro_acc_mutex, K_FOREVER); // lock mutex to compute and display data
 
 		// Compute linear accelerations and gyroscope measurements
 		acc_x = ((acc_x2 << 8) + acc_x1);
@@ -71,11 +77,26 @@ void complementary_filter(void) {
 		teta_speed_z = gyro_z * 0.00762939453;
 		tilt_angle_x = tilt_angle_x + (teta_speed_x * 0.00961538461); // measurements rate set to 104 Hz for gyroscope
 		tilt_angle_y = tilt_angle_y + (teta_speed_y * 0.00961538461);
+		filter_tilt_X = (0.95 * teta_x) + (0.05 * (-tilt_angle_y * 100.0));
+		filter_tilt_Y = (0.95 * teta_y) + (0.05 * tilt_angle_x * 100.0);
+		// Directly print with complementary filter 95% accelerometer and 5% gyroscope
+		// printk("TiltX: %f TiltY: %f\n", filter_tilt_X, filter_tilt_Y);
 
-		//Directly print with complementary filter 95% accelerometer and 5% gyroscope
-		printk("TiltX: %f TiltY: %f\n",(0.95 * teta_x) + (0.05 * (-tilt_angle_y*100.0)),(0.9 * teta_y) + (0.1 * tilt_angle_x * 100.0));
+		k_mutex_unlock(&gyro_acc_mutex); // unlock mutex to give it back to read_display_accelerometer work
+	}
+}
 
-		k_mutex_unlock(&gyro_acc_mutex); //unlock mutex to give it back to read_display_accelerometer work
+// Entry point function of blink_id thread
+void led_blinking(void)
+{
+	k_msleep(1000);
+	while (1)
+	{
+		blink_rate_ref = fabs(filter_tilt_X) + fabs(filter_tilt_Y);		
+		gpio_pin_set_dt(&led, 1);
+		k_msleep(10000 / blink_rate_ref);
+		gpio_pin_set_dt(&led, 0);
+		k_msleep(10000 / blink_rate_ref);	
 	}
 }
 
@@ -111,7 +132,8 @@ void read_display_accelerometer(struct k_work *item)
 		k_mutex_unlock(&gyro_acc_mutex); // unlock mutex after reading and storing datas
 	}
 	else
-	{}
+	{
+	}
 }
 
 void data_on_accelerometer(const struct device *dev, struct gpio_callback *cb,
@@ -143,6 +165,13 @@ void main(void)
 		return;
 	}
 
+	// Check if led device is ready
+	if (!device_is_ready(led.port))
+	{
+		printk("Error: led device is not ready");
+		return;
+	}
+
 	// Set interruption line to trigger interruption when edge rising
 	ret = gpio_pin_interrupt_configure_dt(&accelerometer_irq, GPIO_INT_EDGE_RISING);
 	if (ret != 0)
@@ -168,3 +197,6 @@ void main(void)
 
 // Define thread for complementary filter
 K_THREAD_DEFINE(filter_id, STACKSIZE, complementary_filter, NULL, NULL, NULL, PRIORITY, 0, 0);
+
+// Define thread for led blinking
+K_THREAD_DEFINE(blink_id, STACKSIZE, led_blinking, NULL, NULL, NULL, PRIORITY, 0, 0);
