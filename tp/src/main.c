@@ -20,6 +20,14 @@
 
 #define PI 3.14159265
 
+// Define the stacksize for the complementary filter thread
+#define STACKSIZE 1024
+
+// Define the priority for the complementary filter thread
+#define PRIORITY 9
+
+K_MUTEX_DEFINE(gyro_acc_mutex); // define and init mutex for acceleromter and gyroscope datas
+
 // Structure for k_work object to read and display accelerometer value
 struct k_work read_display_accelerometer_work;
 
@@ -36,10 +44,40 @@ static struct i2c_dt_spec accelerometer = I2C_DT_SPEC_GET(DT_ALIAS(accel0));
 static const struct gpio_dt_spec accelerometer_irq = GPIO_DT_SPEC_GET(DT_ALIAS(accel0), irq_gpios);
 
 // Variables for accelerometer measurements
-uint8_t acc_x1, acc_x2, acc_y1, acc_y2, acc_z1, acc_z2, status, gyro_x1, gyro_x2, gyro_y1, gyro_y2, gyro_z1,gyro_z2;
+static uint8_t acc_x1, acc_x2, acc_y1, acc_y2, acc_z1, acc_z2, status, gyro_x1, gyro_x2, gyro_y1, gyro_y2, gyro_z1, gyro_z2;
 int16_t acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z;
-double teta_x, teta_y, teta_speed_x,teta_speed_y,teta_speed_z;
-static double tilt_angle_x, tilt_angle_y = 0.0; //static variable for gyroscope measurement to save previous value beetween each measurements
+double teta_x, teta_y, teta_speed_x, teta_speed_y, teta_speed_z, Tilt_X, Tilt_Y;
+static double tilt_angle_x, tilt_angle_y = 0.0; // static variable for gyroscope measurement to save previous value beetween each measurements
+
+//Entry point function of filter_id thread
+void complementary_filter(void) {
+	while (1) {
+		k_msleep(200); //waits 200 ms between each display
+		k_mutex_lock(&gyro_acc_mutex, K_FOREVER); //lock mutex to compute and display data
+
+		// Compute linear accelerations and gyroscope measurements
+		acc_x = ((acc_x2 << 8) + acc_x1);
+		acc_y = ((acc_y2 << 8) + acc_y1);
+		acc_z = ((acc_z2 << 8) + acc_z1);
+		gyro_x = ((gyro_x2 << 8) + gyro_x1);
+		gyro_y = ((gyro_y2 << 8) + gyro_y1);
+		gyro_z = ((gyro_z2 << 8) + gyro_z1);
+
+		// Compute angular positions
+		teta_x = atan(acc_x * 0.00059857177 / sqrt((pow(acc_y * 0.00059857177, 2) + pow(acc_z * 0.00059857177, 2)))) * 180 / PI; // converted in degrees
+		teta_y = atan(acc_y * 0.00059857177 / sqrt((pow(acc_x * 0.00059857177, 2) + pow(acc_z * 0.00059857177, 2)))) * 180 / PI;
+		teta_speed_x = gyro_x * 0.00762939453; // converted in dps
+		teta_speed_y = gyro_y * 0.00762939453;
+		teta_speed_z = gyro_z * 0.00762939453;
+		tilt_angle_x = tilt_angle_x + (teta_speed_x * 0.00961538461); // measurements rate set to 104 Hz for gyroscope
+		tilt_angle_y = tilt_angle_y + (teta_speed_y * 0.00961538461);
+
+		//Directly print with complementary filter 95% accelerometer and 5% gyroscope
+		printk("TiltX: %f TiltY: %f\n",(0.95 * teta_x) + (0.05 * (-tilt_angle_y*100.0)),(0.9 * teta_y) + (0.1 * tilt_angle_x * 100.0));
+
+		k_mutex_unlock(&gyro_acc_mutex); //unlock mutex to give it back to read_display_accelerometer work
+	}
+}
 
 void read_display_accelerometer(struct k_work *item)
 {
@@ -48,6 +86,8 @@ void read_display_accelerometer(struct k_work *item)
 
 	if (status >= 0x3)
 	{ // data available for both gyroscope and accelerometer
+
+		k_mutex_lock(&gyro_acc_mutex, K_FOREVER); // lock mutex before reading datas
 
 		// Read gyroscope data for X axis
 		i2c_reg_read_byte_dt(&accelerometer, 0x22, &gyro_x1);
@@ -67,24 +107,11 @@ void read_display_accelerometer(struct k_work *item)
 		// Read linear acceleraion for Z axis
 		i2c_reg_read_byte_dt(&accelerometer, 0x2c, &acc_z1);
 		i2c_reg_read_byte_dt(&accelerometer, 0x2d, &acc_z2);
-		// Compute linear accelerations and gyroscope measurements
-		acc_x = ((acc_x2 << 8) + acc_x1);
-		acc_y = ((acc_y2 << 8) + acc_y1);
-		acc_z = ((acc_z2 << 8) + acc_z1);
-		gyro_x = ((gyro_x2 << 8) + gyro_x1);
-		gyro_y = ((gyro_y2 << 8) + gyro_y1);
-		gyro_z = ((gyro_z2 << 8) + gyro_z1);
 
-		// Compute angular positions
-		teta_x = atan(acc_x * 0.00059857177 / sqrt((pow(acc_y * 0.00059857177, 2) + pow(acc_z * 0.00059857177, 2)))) * 180 / PI; // converted in degrees
-		teta_y = atan(acc_y * 0.00059857177 / sqrt((pow(acc_x * 0.00059857177, 2) + pow(acc_z * 0.00059857177, 2)))) * 180 / PI;
-		teta_speed_x = gyro_x * 0.00762939453; //converted in dps
-		teta_speed_y = gyro_y * 0.00762939453;
-		teta_speed_z = gyro_z * 0.00762939453;
-		tilt_angle_x = tilt_angle_x + (teta_speed_x*0.00961538461); //measurements rate set to 104 Hz for gyroscope
-		tilt_angle_y = tilt_angle_y + (teta_speed_y*0.00961538461);
-		printk("TiltX: %f TiltY: %f TiltGx: %f TiltGy: %f\n", teta_x, teta_y,tilt_angle_y*100.0,tilt_angle_x*100.0);
-	} else {}
+		k_mutex_unlock(&gyro_acc_mutex); // unlock mutex after reading and storing datas
+	}
+	else
+	{}
 }
 
 void data_on_accelerometer(const struct device *dev, struct gpio_callback *cb,
@@ -138,3 +165,6 @@ void main(void)
 	// Set interruption characteristics
 	i2c_reg_write_byte_dt(&accelerometer, 0x0d, 0b00000001); // set INT1_DRDY_XL (data on acceleromter) to 1 (enable) on the interruption register INT1_CTRL
 }
+
+// Define thread for complementary filter
+K_THREAD_DEFINE(filter_id, STACKSIZE, complementary_filter, NULL, NULL, NULL, PRIORITY, 0, 0);
