@@ -89,14 +89,19 @@ void complementary_filter(void)
 // Entry point function of blink_id thread
 void led_blinking(void)
 {
-	k_msleep(1000);
+	
 	while (1)
 	{
-		blink_rate_ref = fabs(filter_tilt_X) + fabs(filter_tilt_Y);		
-		gpio_pin_set_dt(&led, 1);
-		k_msleep(10000 / blink_rate_ref);
-		gpio_pin_set_dt(&led, 0);
-		k_msleep(10000 / blink_rate_ref);	
+		blink_rate_ref = fabs(filter_tilt_X) + fabs(filter_tilt_Y);	
+		if (blink_rate_ref<2) {
+			gpio_pin_set_dt(&led, 1);
+		} else {
+			gpio_pin_set_dt(&led, 1);
+			k_msleep(10000 / fmax(blink_rate_ref,1));
+			gpio_pin_set_dt(&led, 0);
+			k_msleep(10000 / fmax(blink_rate_ref,1));
+		}
+		k_msleep(10);
 	}
 }
 
