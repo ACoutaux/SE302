@@ -11,7 +11,8 @@ int main() {
   }
   // Set brightness to 5% for all leds so that we don't become blind
   for (int i = 0; i < 8; i++)
-    led_set_brightness(dm163_dev, i, 5);
+    led_set_brightness(dm163_dev, i, 2);
+
   // Animate the leds
   for (;;) {
     for (int col = 0; col < 8; col++) {
@@ -20,4 +21,5 @@ int main() {
       led_off(dm163_dev, col);
     }
   }
+  return 0;
 }

@@ -2,6 +2,8 @@
 // DM163 peripherals we can designated them by index.
 #define DT_DRV_COMPAT siti_dm163
 
+#include <math.h>
+#include <stdio.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/led.h>
@@ -42,6 +44,8 @@ struct dm163_data
 static int dm163_on(const struct device *dev, uint32_t led);
 static int dm163_off(const struct device *dev, uint32_t led);
 static int dm163_set_brightness(const struct device *dev, uint32_t led, uint8_t value);
+static void flush_channels(const struct device *dev);
+static void flush_brightness(const struct device *dev);
 
 static int dm163_init(const struct device *dev)
 {
@@ -120,11 +124,11 @@ DT_INST_FOREACH_STATUS_OKAY(DM163_DEVICE)
 // Send (bits) bits of data on the DM163
 static void pulse_data(const struct dm163_config *config, uint8_t data, int bits)
 {
-  for (int i = bits - 1; i >= 0; i--)
+  for (int i = bits-1; i >= 0; i--)
   {
-    gpio_pin_set_det(config->sin, data << i & 0x1);
-    gpio_pin_set_dt(config->gck, 0b1); // config->gck active then inactive (clock pulse)
-    gpio_pin_set_dt(config->gck, 0b0);
+    gpio_pin_set_dt(&config->sin, (bool)(data & (1<<(i))));
+    gpio_pin_set_dt(&config->gck, 1); // config->gck active then inactive (clock pulse)
+    gpio_pin_set_dt(&config->gck, 0);
   }
 }
 
@@ -134,12 +138,14 @@ static void flush_channels(const struct device *dev)
   const struct dm163_config *config = dev->config;
   struct dm163_data *data = dev->data;
 
+  gpio_pin_set_dt(&config->selbk, 1); // selection of bank 1 (should be value by default)
+
   for (int i = NUM_CHANNELS - 1; i >= 0; i--)
   {
     pulse_data(config, data->channels[i], 8);
-    gpio_pin_set_dt(&config->lat, 1);
-    gpio_pin_set_dt(&config->lat, 0);
   }
+  gpio_pin_set_dt(&config->lat, 1);
+  gpio_pin_set_dt(&config->lat, 0);
 }
 
 // Send brightness information to bank 0
@@ -153,30 +159,30 @@ static void flush_brightness(const struct device *dev)
 
   for (int i = NUM_CHANNELS - 1; i >= 0; i--)
   {
-    pulse_data(config, data->channels[i], 8);
-    gpio_pin_set_dt(&config->lat, 1);
-    gpio_pin_set_dt(&config->lat, 0);
+    pulse_data(config, data->brightness[i], 6);
   }
-
+  gpio_pin_set_dt(&config->lat,1);
+  gpio_pin_set_dt(&config->lat,0);
   gpio_pin_set_dt(&config->selbk, 1); // reselection of bank 1
 }
 
 // Send value brightness to led
 static int dm163_set_brightness(const struct device *dev, uint32_t led, uint8_t value)
 {
-  if (led < 0 || led > 7)
+  if (led >= NUM_LEDS || led < 0)
   {
     return -EINVAL;
   }
   struct dm163_data *data = dev->data;                   // retrieve data from dev
-  int led_brightness = max(round(value / 101 * 64), 63); // convert brightness from 0-100 to
+  int led_brightness = (uint16_t)value*63/100; // convert brightness from 0-100 to 0-63
 
   // Set brigthness into the corresponding channels of the led
   data->brightness[led * 3] = led_brightness;
-  data->brightness[led * 3 + 1] = led_brightness;
-  data->brightness[led * 3 + 2] = led_brightness;
+  data->brightness[(led * 3) + 1] = led_brightness;
+  data->brightness[(led * 3) + 2] = led_brightness;
 
-  flush_brightness(dev);
+  flush_brightness(dev); //send brigthness
+  return 0;
 }
 
 static int dm163_on(const struct device *dev, uint32_t led)
@@ -184,11 +190,12 @@ static int dm163_on(const struct device *dev, uint32_t led)
   struct dm163_data *data = dev->data; // retrieve data from dev
 
   // Set colors to the corresponding channels of the led
-  data->channels[led] = 0xff;
-  data->channels[led + 1] = 0xff;
-  data->channels[led + 2] = 0xff;
+  data->channels[led * 3] = 0xff;
+  data->channels[(led * 3) + 1] = 0xff;
+  data->channels[(led * 3) + 2] = 0xff;
 
-  flush_channels(dev);
+  flush_channels(dev); //send data
+  return 0;
 }
 
 static int dm163_off(const struct device *dev, uint32_t led)
@@ -196,9 +203,10 @@ static int dm163_off(const struct device *dev, uint32_t led)
   struct dm163_data *data = dev->data; // retrieve data from dev
 
   // Set colors to the corresponding channels of the led
-  data->channels[led] = 0x0;
-  data->channels[led + 1] = 0x0;
-  data->channels[led + 2] = 0x0;
+  data->channels[led * 3] = 0x0;
+  data->channels[(led * 3) + 1] = 0x0;
+  data->channels[(led * 3) + 2] = 0x0;
 
-  flush_channels(dev);
+  flush_channels(dev); //send data
+  return 0;
 }
