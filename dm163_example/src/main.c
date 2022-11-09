@@ -22,24 +22,27 @@ static const struct gpio_dt_spec rows[] = {
 };
 
 int main() {
+  const uint8_t colors[] = {0x0,0X0,0xff}; //set led color to blue
   if (!device_is_ready(dm163_dev)) {
     return -ENODEV;
   }
   for (int row = 0; row < 8; row++)
     gpio_pin_configure_dt(&rows[row], GPIO_OUTPUT_INACTIVE);
   // Set brightness to 2% for all leds so that we don't become blind
-  for (int i = 0; i < 8; i++)
+  for (int i = 0; i < 8; i++) 
     led_set_brightness(dm163_dev, i, 2);
   // Animate the leds on every row and every column
   for (;;) {
     for (int row = 0; row < 8; row++) {
       gpio_pin_set_dt(&rows[row], 1);
       for (int col = 0; col < 8; col++) {
-        led_on(dm163_dev, col);
-        k_sleep(K_MSEC(30));
+        //led_on(dm163_dev, col);
+        led_set_color(dm163_dev,col,3,&colors[0]);
+        k_sleep(K_MSEC(100));
         led_off(dm163_dev, col);
       }
       gpio_pin_set_dt(&rows[row], 0);
     }
   }
+  return 0;
 }

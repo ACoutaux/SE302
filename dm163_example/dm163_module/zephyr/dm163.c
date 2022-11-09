@@ -31,21 +31,24 @@ struct dm163_data
   uint8_t channels[NUM_CHANNELS];
 };
 
-#define CONFIGURE_PIN(dt, flags)                                               \
-  do {                                                                         \
-    if (!device_is_ready((dt)->port)) {                                        \
-      LOG_ERR("device %s is not ready", (dt)->port->name);                     \
-      return -ENODEV;                                                          \
-    }                                                                          \
-    gpio_pin_configure_dt(dt, flags);                                          \
+#define CONFIGURE_PIN(dt, flags)                           \
+  do                                                       \
+  {                                                        \
+    if (!device_is_ready((dt)->port))                      \
+    {                                                      \
+      LOG_ERR("device %s is not ready", (dt)->port->name); \
+      return -ENODEV;                                      \
+    }                                                      \
+    gpio_pin_configure_dt(dt, flags);                      \
   } while (0)
 
-//Declare implemented functions 
+// Declare implemented functions
 static int dm163_on(const struct device *dev, uint32_t led);
 static int dm163_off(const struct device *dev, uint32_t led);
 static int dm163_set_brightness(const struct device *dev, uint32_t led, uint8_t value);
 static void flush_channels(const struct device *dev);
 static void flush_brightness(const struct device *dev);
+int dm163_set_color(const struct device *dev, uint32_t led, uint8_t num_colors, const uint8_t *color);
 
 static int dm163_init(const struct device *dev)
 {
@@ -92,6 +95,7 @@ static const struct led_driver_api dm163_api = {
     .on = dm163_on,
     .off = dm163_off,
     .set_brightness = dm163_set_brightness,
+    .set_color = dm163_set_color,
 };
 
 // Macro to initialize the DM163 peripheral with index i
@@ -115,8 +119,6 @@ static const struct led_driver_api dm163_api = {
                         &dm163_config_##i, POST_KERNEL,                        \
                         CONFIG_LED_INIT_PRIORITY, &dm163_api);
 
-
-
 // Apply the DM163_DEVICE to all DM163 peripherals not marked "disabled"
 // in the device tree and pass it the corresponding index.
 DT_INST_FOREACH_STATUS_OKAY(DM163_DEVICE)
@@ -124,9 +126,9 @@ DT_INST_FOREACH_STATUS_OKAY(DM163_DEVICE)
 // Send (bits) bits of data on the DM163
 static void pulse_data(const struct dm163_config *config, uint8_t data, int bits)
 {
-  for (int i = bits-1; i >= 0; i--)
+  for (int i = bits - 1; i >= 0; i--)
   {
-    gpio_pin_set_dt(&config->sin, (bool)(data & (1<<(i))));
+    gpio_pin_set_dt(&config->sin, (bool)(data & (1 << (i))));
     gpio_pin_set_dt(&config->gck, 1); // config->gck active then inactive (clock pulse)
     gpio_pin_set_dt(&config->gck, 0);
   }
@@ -161,8 +163,8 @@ static void flush_brightness(const struct device *dev)
   {
     pulse_data(config, data->brightness[i], 6);
   }
-  gpio_pin_set_dt(&config->lat,1);
-  gpio_pin_set_dt(&config->lat,0);
+  gpio_pin_set_dt(&config->lat, 1);
+  gpio_pin_set_dt(&config->lat, 0);
   gpio_pin_set_dt(&config->selbk, 1); // reselection of bank 1
 }
 
@@ -173,15 +175,15 @@ static int dm163_set_brightness(const struct device *dev, uint32_t led, uint8_t 
   {
     return -EINVAL;
   }
-  struct dm163_data *data = dev->data;                   // retrieve data from dev
-  int led_brightness = (uint16_t)value*63/100; // convert brightness from 0-100 to 0-63
+  struct dm163_data *data = dev->data;             // retrieve data from dev
+  int led_brightness = (uint16_t)value * 63 / 100; // convert brightness from 0-100 to 0-63
 
   // Set brigthness into the corresponding channels of the led
   data->brightness[led * 3] = led_brightness;
   data->brightness[(led * 3) + 1] = led_brightness;
   data->brightness[(led * 3) + 2] = led_brightness;
 
-  flush_brightness(dev); //send brigthness
+  flush_brightness(dev); // send brigthness
   return 0;
 }
 
@@ -194,7 +196,7 @@ static int dm163_on(const struct device *dev, uint32_t led)
   data->channels[(led * 3) + 1] = 0xff;
   data->channels[(led * 3) + 2] = 0xff;
 
-  flush_channels(dev); //send data
+  flush_channels(dev); // send data
   return 0;
 }
 
@@ -207,6 +209,36 @@ static int dm163_off(const struct device *dev, uint32_t led)
   data->channels[(led * 3) + 1] = 0x0;
   data->channels[(led * 3) + 2] = 0x0;
 
-  flush_channels(dev); //send data
+  flush_channels(dev); // send data
+  return 0;
+}
+
+//Set led on with specified color (0 by default)
+int dm163_set_color(const struct device *dev, uint32_t led, uint8_t num_colors, const uint8_t *color)
+{
+  if (led >= NUM_LEDS || led < 0 || num_colors > 3)
+    return -EINVAL;
+  
+  struct dm163_data *data = dev->data; // retrieve data from dev
+
+  if (num_colors == 0) {
+    data->channels[led * 3] = 0x0;
+    data->channels[(led * 3) + 1] = 0x0;
+    data->channels[(led * 3) + 2] = 0x0;
+  } else if (num_colors == 1) {
+    data->channels[led * 3] = color[0];
+    data->channels[(led * 3) + 1] = 0x0;
+    data->channels[(led * 3) + 2] = 0x0;
+  } else if (num_colors == 2) {
+    data->channels[led * 3] = color[0];
+    data->channels[(led * 3) + 1] = color[1];
+    data->channels[(led * 3) + 2] = 0x0;
+  } else {
+    data->channels[led * 3] = color[0];
+    data->channels[(led * 3) + 1] = color[1];
+    data->channels[(led * 3) + 2] = color[2];
+  }
+
+  flush_channels(dev); //send color data
   return 0;
 }
