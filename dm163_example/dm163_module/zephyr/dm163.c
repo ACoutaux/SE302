@@ -29,7 +29,10 @@ struct dm163_data
 {
   uint8_t brightness[NUM_CHANNELS];
   uint8_t channels[NUM_CHANNELS];
+  struct k_mutex dm163_mutex;
 };
+
+
 
 #define CONFIGURE_PIN(dt, flags)                           \
   do                                                       \
@@ -89,6 +92,9 @@ static int dm163_init(const struct device *dev)
     gpio_pin_set_dt(&config->en, 1);
   }
   LOG_INF("device %s initialized", dev->name);
+
+  k_mutex_init(&data->dm163_mutex);
+
   return 0;
 }
 
@@ -185,7 +191,9 @@ static int dm163_set_brightness(const struct device *dev, uint32_t led, uint8_t 
   data->brightness[(led * 3) + 1] = led_brightness;
   data->brightness[(led * 3) + 2] = led_brightness;
 
+  k_mutex_lock(&data->dm163_mutex,K_FOREVER);
   flush_brightness(dev); // send brigthness
+  k_mutex_unlock(&data->dm163_mutex);
   return 0;
 }
 
@@ -198,7 +206,9 @@ static int dm163_on(const struct device *dev, uint32_t led)
   data->channels[(led * 3) + 1] = 0xff;
   data->channels[(led * 3) + 2] = 0xff;
 
+  k_mutex_lock(&data->dm163_mutex,K_FOREVER);
   flush_channels(dev); // send data
+  k_mutex_unlock(&data->dm163_mutex);
   return 0;
 }
 
@@ -210,8 +220,10 @@ static int dm163_off(const struct device *dev, uint32_t led)
   data->channels[led * 3] = 0x0;
   data->channels[(led * 3) + 1] = 0x0;
   data->channels[(led * 3) + 2] = 0x0;
-
+  
+  k_mutex_lock(&data->dm163_mutex,K_FOREVER);
   flush_channels(dev); // send data
+  k_mutex_unlock(&data->dm163_mutex);
   return 0;
 }
 
@@ -241,7 +253,9 @@ int dm163_set_color(const struct device *dev, uint32_t led, uint8_t num_colors, 
     data->channels[(led * 3) + 2] = color[2];
   }
 
+  k_mutex_lock(&data->dm163_mutex,K_FOREVER);
   flush_channels(dev); //send color data
+  k_mutex_unlock(&data->dm163_mutex);
   return 0;
 }
 
