@@ -49,6 +49,7 @@ static int dm163_set_brightness(const struct device *dev, uint32_t led, uint8_t 
 static void flush_channels(const struct device *dev);
 static void flush_brightness(const struct device *dev);
 int dm163_set_color(const struct device *dev, uint32_t led, uint8_t num_colors, const uint8_t *color);
+int dm163_write_channels(const struct device *dev, uint32_t start_channel, uint32_t num_channels, const uint8_t *buf);
 
 static int dm163_init(const struct device *dev)
 {
@@ -96,6 +97,7 @@ static const struct led_driver_api dm163_api = {
     .off = dm163_off,
     .set_brightness = dm163_set_brightness,
     .set_color = dm163_set_color,
+    .write_channels = dm163_write_channels,
 };
 
 // Macro to initialize the DM163 peripheral with index i
@@ -240,5 +242,20 @@ int dm163_set_color(const struct device *dev, uint32_t led, uint8_t num_colors, 
   }
 
   flush_channels(dev); //send color data
+  return 0;
+}
+
+//Set channels in bulk
+int dm163_write_channels(const struct device *dev, uint32_t start_channel, uint32_t num_channels, const uint8_t *buf) {
+   
+  if (start_channel >= NUM_CHANNELS * 8 || start_channel < 0 || num_channels >= NUM_CHANNELS * 8 || num_channels < 0)
+    return -EINVAL;
+
+  struct dm163_data *data = dev->data; //retrieve data from dev 
+  for (int i=start_channel; i<num_channels+start_channel; i++) {
+    data->channels[i] = buf[i];
+  }
+
+  flush_channels(dev); //send channels data
   return 0;
 }
