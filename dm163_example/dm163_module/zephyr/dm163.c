@@ -271,5 +271,6 @@ int dm163_write_channels(const struct device *dev, uint32_t start_channel, uint3
   }
 
   flush_channels(dev); //send channels data
+
   return 0;
 }
