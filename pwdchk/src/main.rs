@@ -26,7 +26,7 @@ struct GroupArgs {
     account: Vec<Account>,
 }
 
-fn main() -> Result<(), error::Error::NoColon> {
+fn main() -> Result<(), error::Error> {
     let args = AppArgs::parse(); //get command line arguments
     match args.command {
         Command::Group(args) => {   //args contain Account structures
@@ -41,6 +41,3 @@ fn main() -> Result<(), error::Error::NoColon> {
     }
 }
   
-  
-  
-

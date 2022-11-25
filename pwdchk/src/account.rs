@@ -3,8 +3,6 @@
 use super::error::Error; //import structure from error module
 use std::str::FromStr;
 use std::collections::HashMap;
-//use std::error::Error;
-//use std::fmt::Display;
 
 #[derive(Clone)]
 #[derive(Debug)] //with this line debug trait can be used by Account structure
@@ -17,9 +15,9 @@ pub struct Account{
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "Error")
   }
-}
+}*/
 
-impl Error for NoColon {
+/*impl Error for Error::NoColon {
 }*/
 
 impl Account {
