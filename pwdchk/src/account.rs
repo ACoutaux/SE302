@@ -15,4 +15,10 @@ impl Account {
             password: password.to_string(),
         }
     }
+
+    ///Builds and returns an account from a string
+    pub fn from_string(s: &str) -> Self {
+      Account::new(s.split_once(':').unwrap().0, s.split_once(':').unwrap().1)
+    }
+  
 }
