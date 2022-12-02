@@ -1,25 +1,17 @@
 //! This module implements account (login + password) structure
+use super::error; //to use content of error module in this module
 use std::collections::HashMap;
-use std::fmt::Display;
 use std::str::FromStr;
-use std::error::Error;
+use std::path::Path;
+use std::fs::File;
+use std::io::BufReader;
+use std::io::BufRead;
 
 #[derive(Clone, Debug)] //with this line debug trait can be used by Account structure
 pub struct Account {
     login: String,
     password: String,
 }
-
-#[derive(Debug)]
-pub struct NoColon;
-
-impl Display for NoColon {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "error")
-    }
-}
-
-impl Error for NoColon {}
 
 ///Implements Account structure associated functions
 impl Account {
@@ -50,16 +42,27 @@ impl Account {
     pub fn from_string(s: &str) -> Self {
         Account::new(s.split_once(':').unwrap().0, s.split_once(':').unwrap().1)
     }
+
+    ///Load accounts from text file (one account per line)
+    pub fn from_file(filename: &Path) -> Result<Vec<Account>, error::Error> {
+        let f = File::open(Path::new(filename))?; //open file indicated by path argument and returns error otherwise
+        let f = BufReader::new(f); //declare read buffer on file (mask previous f value)
+        let v = f.lines().collect::<Result<Vec<_>,std::io::Error>>(); //collect lines in a result where error is of type io::Error
+        let v = v.map_err(error::Error::from)?; //returns an io error from Error structure if an error is detected in v
+        let accounts = v.iter().map(|x|Self::from_str(x.as_str())).collect::<Result<Vec<_>,error::Error>>()?; //returns a nocolon error from Error structure if an error is detected in v
+ 
+        Ok(accounts)
+    }
 }
 
 impl FromStr for Account {
-    type Err = NoColon;
+    type Err = error::Error;
     ///Returns an Account structure if input string contains ':' and an error otherwise
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.contains(':') {
             Ok(Self::from_string(s))
         } else {
-            Err(NoColon)
+            Err(error::Error::NoColon)
         }
     }
 }

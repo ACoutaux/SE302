@@ -1,9 +1,11 @@
 //! Main function module
-
 mod account; //reference to account module
 use account::*; //use impletentations of account module
+mod error; //import error module
+use error::Error; //to use directly Error structure
 
-use clap::{Args, Parser, Subcommand};
+use clap::{ArgGroup, Args, Parser, Subcommand};
+use std::{collections::HashMap, path::PathBuf};
 
 #[derive(Parser)]
 #[clap(version, author, about)]
@@ -19,17 +21,36 @@ enum Command {
 }
 
 #[derive(Args)]
+#[clap(group(
+    ArgGroup::new("input")
+        .required(true)
+        .args(&["account", "file"]),
+))]
 struct GroupArgs {
-    #[clap(required = true)]
+    #[clap(required = false)]
     /// Account to check
     account: Vec<Account>,
+    #[clap(short, long)]
+    /// Load passwords from a file
+    file: Option<PathBuf>,
 }
-fn main() -> Result<(), NoColon> {
-    let args = AppArgs::parse();
+
+fn main() -> Result<(), Error> {
+    let args = AppArgs::parse(); //get command line arguments
     match args.command {
         Command::Group(args) => {
-            // args is of type GroupArgs here
-            let hash = Account::group(args.account);
+            let hash: HashMap<String, Vec<String>>; //variable to save hash value
+            match args.file {
+                Some(path_) => {
+                    let accounts = Account::from_file(&path_);
+                    //Load hash table from file
+                    hash = Account::group(accounts.unwrap());
+                }
+                None => {
+                    // Load hash table from args command line
+                    hash = Account::group(args.account);
+                }
+            }
             //Print passwords with associated logins
             for key in hash.keys() {
                 let logins = hash.get(key).unwrap().join(", ");
