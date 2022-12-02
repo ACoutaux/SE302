@@ -1,10 +1,14 @@
 //! This module implements account (login + password) structure
+use std::str::FromStr;
 
 #[derive(Clone, Debug)] //with this line debug trait can be used by Account structure
 pub struct Account {
     login: String,
     password: String,
 }
+
+#[derive(Debug)]
+pub struct NoColon;
 
 ///Implements Account structure associated functions
 impl Account {
@@ -22,3 +26,16 @@ impl Account {
     }
   
 }
+
+impl FromStr for Account {
+  type Err = NoColon;
+  ///Returns an Account structure if input string contains ':' and an error otherwise
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+      if s.contains(':') {
+          Ok(Self::from_string(s))
+      } else {
+          Err(NoColon)
+      }
+  }
+}
+
