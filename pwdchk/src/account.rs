@@ -1,6 +1,8 @@
 //! This module implements account (login + password) structure
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::str::FromStr;
+use std::error::Error;
 
 #[derive(Clone, Debug)] //with this line debug trait can be used by Account structure
 pub struct Account {
@@ -10,6 +12,14 @@ pub struct Account {
 
 #[derive(Debug)]
 pub struct NoColon;
+
+impl Display for NoColon {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "error")
+    }
+}
+
+impl Error for NoColon {}
 
 ///Implements Account structure associated functions
 impl Account {
