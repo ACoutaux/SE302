@@ -42,9 +42,9 @@ fn main() -> Result<(), Error> {
             let hash: HashMap<String, Vec<String>>; //variable to save hash value
             match args.file {
                 Some(path_) => {
-                    let accounts = Account::from_file(&path_);
+                    let accounts = Account::from_file(&path_)?;
                     //Load hash table from file
-                    hash = Account::group(accounts.unwrap());
+                    hash = Account::group(accounts);
                 }
                 None => {
                     // Load hash table from args command line
