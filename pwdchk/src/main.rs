@@ -39,22 +39,27 @@ fn main() -> Result<(), Error> {
     let args = AppArgs::parse(); //get command line arguments
     match args.command {
         Command::Group(args) => {
-            let hash: HashMap<String, Vec<String>>; //variable to save hash value
+            let hash: HashMap<&str, Vec<&str>>; //variable to save hash value
             match args.file {
                 Some(path_) => {
                     let accounts = Account::from_file(&path_)?;
                     //Load hash table from file
-                    hash = Account::group(accounts);
-                }
+                    hash = Account::group(&accounts); //give reference of accounts to group function
+                                                      //Print passwords with associated logins
+                    for key in hash.keys() {
+                        let logins = hash.get(key).unwrap().join(", ");
+                        println!("Password {} used by {}", key, logins);
+                    }
+                } //accounts variable dies here
                 None => {
                     // Load hash table from args command line
-                    hash = Account::group(args.account);
+                    hash = Account::group(&args.account);
+                    //Print passwords with associated logins
+                    for key in hash.keys() {
+                        let logins = hash.get(key).unwrap().join(", ");
+                        println!("Password {} used by {}", key, logins);
+                    }
                 }
-            }
-            //Print passwords with associated logins
-            for key in hash.keys() {
-                let logins = hash.get(key).unwrap().join(", ");
-                println!("Password {} used by {}", key, logins);
             }
         }
     }
