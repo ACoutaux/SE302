@@ -10,7 +10,7 @@ use std::str::FromStr;
 #[derive(Clone, Debug)] //with this line debug trait can be used by Account structure
 pub struct Account {
     login: String,
-    password: String,
+    pub password: String,
 }
 
 ///Implements Account structure associated functions

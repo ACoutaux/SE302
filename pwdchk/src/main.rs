@@ -3,6 +3,7 @@ mod account; //reference to account module
 use account::*; //use impletentations of account module
 mod error; //import error module
 use error::Error; //to use directly Error structure
+mod hipb; //import hipb module
 
 use clap::{ArgGroup, Args, Parser, Subcommand};
 use std::{collections::HashMap, path::PathBuf};
@@ -50,6 +51,7 @@ fn main() -> Result<(), Error> {
                         let logins = hash.get(key).unwrap().join(", ");
                         println!("Password {} used by {}", key, logins);
                     }
+                    hipb::sha1(&accounts[0]);
                 } //accounts variable dies here
                 None => {
                     // Load hash table from args command line
