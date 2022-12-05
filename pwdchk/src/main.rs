@@ -51,7 +51,6 @@ fn main() -> Result<(), Error> {
                         let logins = hash.get(key).unwrap().join(", ");
                         println!("Password {} used by {}", key, logins);
                     }
-                    hipb::sha1(&accounts[0]);
                 } //accounts variable dies here
                 None => {
                     // Load hash table from args command line
