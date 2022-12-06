@@ -6,8 +6,9 @@ use error::Error; //to use directly Error structure
 mod hipb; //import hipb module
 
 use clap::{ArgGroup, Args, Parser, Subcommand};
-use hipb::all_sha1_timed;
 use std::{collections::HashMap, path::PathBuf};
+
+use crate::hipb::sha1_by_prefix;
 
 #[derive(Parser)]
 #[clap(version, author, about)]
@@ -47,12 +48,14 @@ fn main() -> Result<(), Error> {
                     let accounts = Account::from_file(&path_)?;
                     //Load hash table from file
                     hash = Account::group(&accounts); //give reference of accounts to group function
-                                                      
+
                     for key in hash.keys() {
                         let logins = hash.get(key).unwrap().join(", ");
                         println!("Password {} used by {}", key, logins);
                     }
-                    all_sha1_timed(&accounts); //test execution time of all_sha1 function
+                    //Test sha1_by_prefix function
+                    let x = sha1_by_prefix(&accounts);
+                    println!("{x:#?}");
                 } //accounts variable dies here
                 None => {
                     // Load hash table from args command line

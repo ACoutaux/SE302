@@ -41,8 +41,8 @@ pub fn all_sha1_timed(accounts: &[Account]) -> Vec<(String, String, &Account)> {
 }
 
 ///Group sha1 with same prefix in a hash table with associated suffix and accounts
-fn sha1_by_prefix(accounts: &[Account]) -> HashMap<String, Vec<(String, &Account)>> {
-    let mut prefix_map: HashMap<String, Vec<(String, &Account)>> = HashMap::new();
+pub fn sha1_by_prefix(accounts: &[Account]) -> HashMap<String, Vec<(String, &Account)>> {
+    let mut prefix_map: HashMap<String, Vec<(String, &Account)>> = HashMap::new(); //create new hash map
     let sha1_vec = all_sha1(accounts);
     for sha1 in sha1_vec.iter() {
         prefix_map
