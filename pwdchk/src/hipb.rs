@@ -1,7 +1,8 @@
 use super::account::*; //to use Account implementation from account module
 use rayon::prelude::*;
 use sha1::{Digest, Sha1};
-use std::time::{Duration, Instant}; //to use time functions
+use std::collections::HashMap;
+use std::time::Instant; //to use time functions
 
 fn sha1(account: &Account) -> (String, String) {
     let mut hasher = Sha1::new(); // create a Sha1 object
@@ -37,4 +38,17 @@ pub fn all_sha1_timed(accounts: &[Account]) -> Vec<(String, String, &Account)> {
     let new_now = Instant::now(); //get current time after all_sha1 execution
     println!("{:?}", new_now.duration_since(now).as_micros()); //print execution time in us
     sha1_tuple
+}
+
+///Group sha1 with same prefix in a hash table with associated suffix and accounts
+fn sha1_by_prefix(accounts: &[Account]) -> HashMap<String, Vec<(String, &Account)>> {
+    let mut prefix_map: HashMap<String, Vec<(String, &Account)>> = HashMap::new();
+    let sha1_vec = all_sha1(accounts);
+    for sha1 in sha1_vec.iter() {
+        prefix_map
+            .entry(sha1.0.clone())
+            .and_modify(|e| e.push((sha1.1.clone(), sha1.2)))
+            .or_insert(vec![(sha1.1.clone(), sha1.2)]);
+    }
+    prefix_map
 }

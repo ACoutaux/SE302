@@ -20,14 +20,12 @@ impl Account {
     pub fn group(accounts: &[Account]) -> HashMap<&str, Vec<&str>> {
         let mut accounts_map: HashMap<&str, Vec<&str>> = HashMap::new(); //build new hash table
         for account in accounts.iter() {
-            let mut current_log: Vec<&str> = vec![];
-            current_log.push(account.login.as_str());
             accounts_map
                 .entry(account.password.as_str())
                 .and_modify(|e| e.push(account.login.as_str()))
-                .or_insert(current_log);
+                .or_insert(vec![account.password.as_str()]);
         }
-        accounts_map.retain(|_, v| v.len() > 1);
+        accounts_map.retain(|_, v| v.len() > 1); //keep only passwords with at least two associated logins
         accounts_map
     }
 

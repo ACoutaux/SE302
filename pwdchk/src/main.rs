@@ -47,7 +47,7 @@ fn main() -> Result<(), Error> {
                     let accounts = Account::from_file(&path_)?;
                     //Load hash table from file
                     hash = Account::group(&accounts); //give reference of accounts to group function
-                                                      //Print passwords with associated logins
+                                                      
                     for key in hash.keys() {
                         let logins = hash.get(key).unwrap().join(", ");
                         println!("Password {} used by {}", key, logins);
