@@ -6,6 +6,7 @@ use error::Error; //to use directly Error structure
 mod hipb; //import hipb module
 
 use clap::{ArgGroup, Args, Parser, Subcommand};
+use hipb::all_sha1_timed;
 use std::{collections::HashMap, path::PathBuf};
 
 #[derive(Parser)]
@@ -51,6 +52,7 @@ fn main() -> Result<(), Error> {
                         let logins = hash.get(key).unwrap().join(", ");
                         println!("Password {} used by {}", key, logins);
                     }
+                    all_sha1_timed(&accounts); //test execution time of all_sha1 function
                 } //accounts variable dies here
                 None => {
                     // Load hash table from args command line
