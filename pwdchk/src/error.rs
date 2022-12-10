@@ -6,6 +6,8 @@ use std::fmt::Display;
 pub enum Error {
     IoError(std::io::Error),
     NoColon,
+    ReqwestError(reqwest::Error),
+    ParseIntError(std::num::ParseIntError),
 }
 
 impl Display for Error {
@@ -14,9 +16,16 @@ impl Display for Error {
     }
 }
 
+///Implements from trait for io type errors
 impl From<std::io::Error> for Error {
     fn from(x: std::io::Error) -> Self {
         Error::IoError(x)
+    }
+}
+///Implements from trait for reqwest type errors
+impl From<reqwest::Error> for Error {
+    fn from(x: reqwest::Error) -> Self {
+        Error::ReqwestError(x)
     }
 }
 

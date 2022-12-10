@@ -1,4 +1,7 @@
 use super::account::*; //to use Account implementation from account module
+use super::error;
+use clap::builder::Str;
+use error::Error;
 use rayon::prelude::*;
 use sha1::{Digest, Sha1};
 use std::collections::HashMap;
@@ -51,4 +54,24 @@ pub fn sha1_by_prefix(accounts: &[Account]) -> HashMap<String, Vec<(String, &Acc
             .or_insert(vec![(sha1.1.clone(), sha1.2)]);
     }
     prefix_map
+}
+
+///Returns lines in String vector or error of the submitted url
+fn get_page(prefix: &str) -> Result<Vec<String>, Error> {
+    let response = reqwest::blocking::get("https://api.pwnedpasswords.com/range/{prefix}")
+        .map_err(Error::from)?; //returns a reqwest error if get() method fails
+    let suffixes = response.text()?;
+    let suf_vec = suffixes.lines().map(|x| x.to_string()).collect();
+    Ok(suf_vec)
+}
+
+///Returns hash map with suffixes and associated occurences linked to a prefix
+fn get_suffixes(prefix: &str) -> Result<HashMap<String, u64>, Error> {
+    let suffixes_vec = get_page(prefix)?;
+    let mut suffixe_map: HashMap<String, u64> = HashMap::new(); //create new hash map for suffix and occurences
+    suffixes_vec.iter().map(|x| {
+        let occ = u64::from_str_radix(x.split_once(':').unwrap().1, 64).unwrap(); //convert occurences number
+        suffixe_map.insert(x.split_once(':').unwrap().0.to_string(), occ); //split suffixes and occurences in hash map
+    });
+    Ok(suffixe_map)
 }

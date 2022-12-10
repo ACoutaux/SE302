@@ -1,5 +1,6 @@
 //! This module implements account (login + password) structure
 use super::error; //to use content of error module in this module
+use error::Error;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufRead;
@@ -43,28 +44,28 @@ impl Account {
     }
 
     ///Load accounts from text file (one account per line)
-    pub fn from_file(filename: &Path) -> Result<Vec<Account>, error::Error> {
+    pub fn from_file(filename: &Path) -> Result<Vec<Account>, Error> {
         let f = File::open(Path::new(filename))?; //open file indicated by path argument and returns error otherwise
         let f = BufReader::new(f); //declare read buffer on file (mask previous f value)
         let v = f.lines().collect::<Result<Vec<_>, std::io::Error>>(); //collect lines in a result where error is of type io::Error
-        let v = v.map_err(error::Error::from)?; //returns an io error from Error structure if an error is detected in v
+        let v = v.map_err(Error::from)?; //returns an io error from Error structure if an error is detected in v
         let accounts = v
             .iter()
             .map(|x| Self::from_str(x.as_str()))
-            .collect::<Result<Vec<_>, error::Error>>()?; //returns a nocolon error from Error structure if an error is detected in v
+            .collect::<Result<Vec<_>, Error>>()?; //returns a nocolon error from Error structure if an error is detected in v
 
         Ok(accounts)
     }
 }
 
 impl FromStr for Account {
-    type Err = error::Error;
+    type Err = Error;
     ///Returns an Account structure if input string contains ':' and an error otherwise
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.contains(':') {
             Ok(Self::from_string(s))
         } else {
-            Err(error::Error::NoColon)
+            Err(Error::NoColon)
         }
     }
 }
