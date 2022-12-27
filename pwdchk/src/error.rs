@@ -7,7 +7,6 @@ pub enum Error {
     IoError(std::io::Error),
     NoColon,
     ReqwestError(reqwest::Error),
-    ParseIntError(std::num::ParseIntError),
 }
 
 impl Display for Error {
