@@ -39,7 +39,8 @@ struct GroupArgs {
     file: Option<PathBuf>,
 }
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     let args = AppArgs::parse(); //get command line arguments
     match args.command {
         Command::Group(args) => {
