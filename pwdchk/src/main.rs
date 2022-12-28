@@ -4,7 +4,7 @@ use account::*; //use impletentations of account module
 mod error; //import error module
 use error::Error; //to use directly Error structure
 mod hipb; //import hipb module
-
+mod scanner; //to use scanner/mod.rs and scanner/net.rs
 use clap::{ArgGroup, Args, Parser, Subcommand};
 use std::{collections::HashMap, path::PathBuf};
 
@@ -20,8 +20,10 @@ enum Command {
     /// Check duplicate passwords from command line
     Group(GroupArgs),
     /// Check if some passwords of accounts have been leaked (as in Group command accounts can be direclty on
-    /// command line or in file so Hipb have the same arguments as Group command)
+    /// command line or in file so Hipb have the same arguments Groupargs as Group command)
     Hipb(GroupArgs),
+    ///Subcommand ping with PingArgs which is a structure of String (host adress) and u16 (port number)
+    Ping(PingArgs),
 }
 
 #[derive(Args)]
@@ -37,6 +39,14 @@ struct GroupArgs {
     #[clap(short, long)]
     /// Load passwords from a file
     file: Option<PathBuf>,
+}
+
+///Structure for ping subcommand arguments
+#[derive(Args)]
+struct PingArgs {
+    ///Host and port are the two arguments for ping command
+    host: String,
+    port: u16,
 }
 
 #[tokio::main]
@@ -67,7 +77,7 @@ async fn main() -> Result<(), Error> {
                 }
             }
         }
-        //hipb subcommand option : check if passwords of accounts in file or directly in command line have been leaked
+        //Hipb subcommand option : check if passwords of accounts in file or directly in command line have been leaked
         Command::Hipb(args) => match args.file {
             Some(path_) => {
                 let accounts = Account::from_file(&path_)?; //load accounts from file if there is file argument
@@ -79,6 +89,15 @@ async fn main() -> Result<(), Error> {
                 println!("{checked_accounts:#?}");
             }
         },
+        //Ping subcommand : check if a port with a given host adress and port number on the command line is open or closed
+        Command::Ping(args) => {
+            let is_connexion_ok = scanner::net::net::tcp_ping(&args.host.as_str(), args.port);
+            if is_connexion_ok.await {
+                println!("{}:{} is open", args.host, args.port);
+            } else {
+                println!("{}:{} is closed", args.host, args.port);
+            }
+        }
     }
     Ok(())
 }
