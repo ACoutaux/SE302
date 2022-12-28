@@ -91,8 +91,9 @@ async fn main() -> Result<(), Error> {
         },
         //Ping subcommand : check if a port with a given host adress and port number on the command line is open or closed
         Command::Ping(args) => {
-            let is_connexion_ok = scanner::net::net::tcp_ping(&args.host.as_str(), args.port);
-            if is_connexion_ok.await {
+            let is_connexion_ok =
+                scanner::net::net::tcp_ping(&args.host.as_str(), args.port).await?;
+            if is_connexion_ok {
                 println!("{}:{} is open", args.host, args.port);
             } else {
                 println!("{}:{} is closed", args.host, args.port);
