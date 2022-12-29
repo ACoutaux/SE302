@@ -6,6 +6,7 @@ use error::Error; //to use directly Error structure
 mod hipb; //import hipb module
 mod scanner; //to use scanner/mod.rs and scanner/net.rs
 use clap::{ArgGroup, Args, Parser, Subcommand};
+use scanner::net::net::tcp_mping;
 use std::{collections::HashMap, path::PathBuf};
 
 #[derive(Parser)]
@@ -22,7 +23,7 @@ enum Command {
     /// Check if some passwords of accounts have been leaked (as in Group command accounts can be direclty on
     /// command line or in file so Hipb have the same arguments Groupargs as Group command)
     Hipb(GroupArgs),
-    ///Subcommand ping with PingArgs which is a structure of String (host adress) and u16 (port number)
+    ///Subcommand ping with PingArgs which is a structure of two strings which represent host list and port list
     Ping(PingArgs),
 }
 
@@ -44,9 +45,9 @@ struct GroupArgs {
 ///Structure for ping subcommand arguments
 #[derive(Args)]
 struct PingArgs {
-    ///Host and port are the two arguments for ping command
+    ///Host list and port list are the two arguments for ping command
     host: String,
-    port: u16,
+    port: String,
 }
 
 #[tokio::main]
@@ -91,12 +92,21 @@ async fn main() -> Result<(), Error> {
         },
         //Ping subcommand : check if a port with a given host adress and port number on the command line is open or closed
         Command::Ping(args) => {
-            let is_connexion_ok =
-                scanner::net::net::tcp_ping(&args.host.as_str(), args.port).await?;
-            if is_connexion_ok {
-                println!("{}:{} is open", args.host, args.port);
-            } else {
-                println!("{}:{} is closed", args.host, args.port);
+            let host_list: Vec<&str> = args.host.split(',').collect(); //list of str hosts from command line
+            let port_list: Vec<u16> = args //list of u16 ports from command line
+                .port
+                .split(',')
+                .map(|x| x.parse::<u16>().unwrap())
+                .collect();
+            //Get the connexion results
+            let connexion_results = tcp_mping(&host_list, &port_list).await;
+            for res in connexion_results {
+                let res_bool = res.2?; //returns error with ? and convert Result in bool otherwise
+                if res_bool {
+                    println!("{}:{} is open", res.0, res.1);
+                } else {
+                    println!("{}:{} is closed", res.0, res.1);
+                }
             }
         }
     }
