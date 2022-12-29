@@ -5,6 +5,7 @@ mod error; //import error module
 use error::Error; //to use directly Error structure
 mod hipb; //import hipb module
 mod scanner; //to use scanner/mod.rs and scanner/net.rs
+use crate::scanner::net::net::expand_net;
 use clap::{ArgGroup, Args, Parser, Subcommand};
 use scanner::net::net::tcp_mping;
 use std::{collections::HashMap, path::PathBuf};
@@ -93,13 +94,23 @@ async fn main() -> Result<(), Error> {
         //Ping subcommand : check if a port with a given host adress and port number on the command line is open or closed
         Command::Ping(args) => {
             let host_list: Vec<&str> = args.host.split(',').collect(); //list of str hosts from command line
+            let mut res_vec: Vec<&str> = vec![]; //variable to contain all adresses with CIDR notation
+
+            /*for x in host_list {
+                for y in expand_net(x) {
+                    let z = y;
+                    let z = z.clone();
+                    res_vec.push(z.as_str());
+                }
+            }*/
+
             let port_list: Vec<u16> = args //list of u16 ports from command line
                 .port
                 .split(',')
                 .map(|x| x.parse::<u16>().unwrap())
                 .collect();
             //Get the connexion results
-            let connexion_results = tcp_mping(&host_list, &port_list).await;
+            let connexion_results = tcp_mping(&res_vec, &port_list).await;
             for res in connexion_results {
                 let res_bool = res.2?; //returns error with ? and convert Result in bool otherwise
                 if res_bool {

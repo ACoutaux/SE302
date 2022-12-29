@@ -3,6 +3,8 @@ pub mod net {
     use super::super::super::error;
     use error::Error;
     use futures::prelude::*;
+    use ipnet::Ipv4Net;
+    use std::net::Ipv4Addr;
     use std::time::Duration;
     use tokio::net::TcpStream;
 
@@ -46,5 +48,16 @@ pub mod net {
         });
 
         tcp_ping_many(&tuple_vec).await //send slice &tuple_tab to function tcp_ping_many and return result
+    }
+
+    //Returns all adresses corresponding to CIDR notation or submitted string otherwise
+    pub fn expand_net(host: &str) -> Vec<String> {
+        if host.contains('/') {
+            let net: Ipv4Net = String::from(host).parse().unwrap(); //creates a net of ipv4 adresses
+            let adresses = net.hosts().map(|x| x.to_string()).collect::<Vec<String>>(); //iteration on adresses which are converted into strings and collect
+            adresses
+        } else {
+            vec![String::from(host)]
+        }
     }
 }
