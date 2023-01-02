@@ -43,12 +43,16 @@ struct GroupArgs {
     file: Option<PathBuf>,
 }
 
-///Structure for ping subcommand arguments
 #[derive(Args)]
+///Structure for ping subcommand arguments
 struct PingArgs {
     ///Host list and port list are the two arguments for ping command
     host: String,
     port: String,
+
+    #[clap(short, long)] //this line allows to write -o in the command line to get the open_only option
+    #[clap(required = false)] //open_only argument is not mandatory
+    open_only: bool, //argument to keep only the print of open ports option
 }
 
 #[tokio::main]
@@ -94,29 +98,62 @@ async fn main() -> Result<(), Error> {
         //Ping subcommand : check if a port with a given host adress and port number on the command line is open or closed
         Command::Ping(args) => {
             let host_list: Vec<&str> = args.host.split(',').collect(); //list of str hosts from command line
-            let mut res_vec: Vec<&str> = vec![]; //variable to contain all adresses with CIDR notation
-
-            /*for x in host_list {
-                for y in expand_net(x) {
-                    let z = y;
-                    let z = z.clone();
-                    res_vec.push(z.as_str());
-                }
-            }*/
+            let mut res_vec: Vec<&str> = vec![];
+            //Apply expand_net function on hosts to get all possible adresses with CIDR notation
+            let exp_vec: Vec<Vec<String>> = host_list.iter().map(|x| expand_net(*x)).collect();
+            //Convert string in &str elements in exp_vec vector
+            let exp_vec: Vec<Vec<&str>> = exp_vec
+                .iter()
+                .map(|x| x.iter().map(|y| y.as_str()).collect())
+                .collect();
+            //Build the &str vector with append method
+            for mut vec in exp_vec {
+                res_vec.append(&mut vec);
+            }
 
             let port_list: Vec<u16> = args //list of u16 ports from command line
                 .port
                 .split(',')
                 .map(|x| x.parse::<u16>().unwrap())
                 .collect();
+
             //Get the connexion results
             let connexion_results = tcp_mping(&res_vec, &port_list).await;
             for res in connexion_results {
-                let res_bool = res.2?; //returns error with ? and convert Result in bool otherwise
-                if res_bool {
-                    println!("{}:{} is open", res.0, res.1);
-                } else {
-                    println!("{}:{} is closed", res.0, res.1);
+                match res.2 {
+                    //match on the Result<bool,Error>
+                    Ok(res_bool) => {
+                        if res_bool {
+                            println!("{}:{} is open", res.0, res.1);
+                        } else {
+                            if args.open_only { //take in account the open_only option to not print the closed ports
+                            } else {
+                                println!("{}:{} is closed", res.0, res.1);
+                            }
+                        }
+                    }
+                    //Match on the error type (Ioerror for wrong adresses and timeout errors)
+                    Err(e) => match e {
+                        Error::IoError(_) => {
+                            if args.open_only {
+                            } else {
+                                println!("{}:{} is not a valid adress", res.0, res.1);
+                            }
+                        }
+                        Error::Timeout(_) => {
+                            if args.open_only {
+                            } else {
+                                println!("{}:{} timed out", res.0, res.1);
+                            }
+                        }
+
+                        _ => {
+                            if args.open_only {
+                            } else {
+                                println!("{}:{} -> error", res.0, res.1);
+                            }
+                        }
+                    },
                 }
             }
         }

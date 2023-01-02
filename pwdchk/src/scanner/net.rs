@@ -4,7 +4,6 @@ pub mod net {
     use error::Error;
     use futures::prelude::*;
     use ipnet::Ipv4Net;
-    use std::net::Ipv4Addr;
     use std::time::Duration;
     use tokio::net::TcpStream;
 
@@ -32,7 +31,7 @@ pub mod net {
         let res = stream::iter(targets); //put targets in a stream
                                          //For each (str,u16) tuple call tcp_ping and returns a tuple with the result in an async bloc in order to have a future
         let res = res.map(|x| async { (x.0, x.1, tcp_ping(x.0, x.1).await) });
-        let res = res.buffer_unordered(8); //8 unachived futures can execute in parallel (arbitrary number)
+        let res = res.buffer_unordered(100); //100 unachived futures can execute in parallel (arbitrary number)
         let res = res.collect::<Vec<_>>().await; //collect tuple in a vector and wait for futures completion with await
         res
     }
