@@ -5,6 +5,7 @@ mod error; //import error module
 use error::Error; //to use directly Error structure
 mod hipb; //import hipb module
 mod scanner; //to use scanner/mod.rs and scanner/net.rs
+use scanner::IdentificationResult;
 use crate::scanner::net::net::expand_net;
 use clap::{ArgGroup, Args, Parser, Subcommand};
 use scanner::net::net::tcp_mping;
@@ -121,16 +122,15 @@ async fn main() -> Result<(), Error> {
             let connexion_results = tcp_mping(&res_vec, &port_list).await;
             for res in connexion_results {
                 match res.2 {
-                    //match on the Result<bool,Error>
-                    Ok(res_bool) => {
-                        if res_bool {
-                            println!("{}:{} is open", res.0, res.1);
-                        } else {
+                    //match on the Result<IdentificationResult,Error>
+                    Ok(res_id) => match res_id {
+                        IdentificationResult::NoWelcomeLine  => println!("{}:{} is open", res.0, res.1),
+                        IdentificationResult::WelcomeLine(s) => println!("{}:{} is open : {}", res.0, res.1,s),
+                        IdentificationResult::ConnexionRefused =>  
                             if args.open_only { //take in account the open_only option to not print the closed ports
                             } else {
                                 println!("{}:{} is closed", res.0, res.1);
-                            }
-                        }
+                            }                    
                     }
                     //Match on the error type (Ioerror for wrong adresses and timeout errors)
                     Err(e) => match e {
