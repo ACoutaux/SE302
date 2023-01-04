@@ -6,9 +6,9 @@ use error::Error; //to use directly Error structure
 mod hipb; //import hipb module
 mod scanner; //to use scanner/mod.rs and scanner/net.rs
 use scanner::IdentificationResult;
-use crate::scanner::net::net::expand_net;
+use crate::scanner::net::net_::expand_net;
 use clap::{ArgGroup, Args, Parser, Subcommand};
-use scanner::net::net::tcp_mping;
+use scanner::net::net_::tcp_mping;
 use std::{collections::HashMap, path::PathBuf};
 
 #[derive(Parser)]
@@ -101,7 +101,7 @@ async fn main() -> Result<(), Error> {
             let host_list: Vec<&str> = args.host.split(',').collect(); //list of str hosts from command line
             let mut res_vec: Vec<&str> = vec![];
             //Apply expand_net function on hosts to get all possible adresses with CIDR notation
-            let exp_vec: Vec<Vec<String>> = host_list.iter().map(|x| expand_net(*x)).collect();
+            let exp_vec: Vec<Vec<String>> = host_list.iter().map(|x| expand_net(x)).collect();
             //Convert string in &str elements in exp_vec vector
             let exp_vec: Vec<Vec<&str>> = exp_vec
                 .iter()
