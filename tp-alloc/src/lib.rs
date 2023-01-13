@@ -5,6 +5,17 @@ struct MyAllocData {
     tab_alloc : [bool;ALLOC_BLOCK_NUM]
 }
 
+struct MyAlloc {
+    memory : [u8;ALLOC_BLOCK_NUM],
+    data : MyAllocData
+}
+
+impl MyAlloc {
+    pub const fn new() -> Self {
+        MyAlloc { memory: [0;ALLOC_BLOCK_NUM], data: MyAllocData { tab_alloc: [true;ALLOC_BLOCK_NUM] } }
+    }
+}
+
 impl MyAllocData {
     ///Set the num_blocks after first_block in the state input
     fn mark_blocks(&mut self, first_block: usize, num_blocks: usize, state: bool) {
