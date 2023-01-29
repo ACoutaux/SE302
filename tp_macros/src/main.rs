@@ -15,10 +15,24 @@ macro_rules! cartesian {
     };
 }
 
+///This macro is an alternative to the dbg! macro
+macro_rules! debug {
+    ($exp:expr) => {
+        {
+            let val = $exp;
+            println!("{}:{} `{}` = {:?}", file!(), line!(), stringify!($exp), val);
+            val
+        }
+    }
+}
+
 fn main() {
     let prod = cartesian!(
         [1, 2, 3],
         [String::from("foo"), String::from("bar")]
       ).collect::<Vec<_>>();
     println!("{prod:?}");
+
+    //To test debug macro
+    println!("Result = {}", 10 + debug!(2*3));
 }
