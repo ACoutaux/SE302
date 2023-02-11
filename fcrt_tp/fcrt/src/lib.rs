@@ -1,16 +1,11 @@
 mod executor;
 
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+mod test{
+#[test]
+fn it_works() {
+    let res = async { 10 };
+    assert_eq!(super::executor::executor::block_on(res), 10);
 }
+}
+
