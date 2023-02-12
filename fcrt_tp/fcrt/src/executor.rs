@@ -3,6 +3,8 @@ pub mod executor {
     use std::sync::{Condvar,Mutex,Arc};
     use std::future::Future;
     use std::task::{Context,Poll,Waker};
+    use std::sync::mpsc;
+    use std::thread;
     use std::pin::Pin;
 
     struct CondVarWaker {
@@ -52,6 +54,16 @@ pub mod executor {
                     return val,
             }
         }
+    }
+
+    pub fn run_on_thread<T: Send + 'static> (fut: impl Future<Output = T> + Send + 'static) 
+    -> mpsc::Receiver<T> {
+        let (tx, rx) = mpsc::channel();
+        thread::spawn(move || {
+            let val = block_on(fut);
+            tx.send(val).expect("error");
+        });
+        rx
     }
 
 }
